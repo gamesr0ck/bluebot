@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bluebot Level Editor</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background-color: #1a1a2e;
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        #editor-container {
+            display: flex;
+            gap: 20px;
+        }
+        canvas {
+            background-color: #222;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+            cursor: crosshair;
+        }
+        .toolbar {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background-color: #111;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #444;
+        }
+        button {
+            padding: 10px;
+            background-color: #333;
+            color: white;
+            border: 1px solid #555;
+            cursor: pointer;
+            font-family: inherit;
+            transition: 0.2s;
+        }
+        button:hover {
+            background-color: #444;
+        }
+        button.active {
+            background-color: #00aaff;
+            color: black;
+            font-weight: bold;
+        }
+        .instructions {
+            margin-top: 10px;
+            font-size: 14px;
+            color: #aaa;
+        }
+    </style>
+</head>
+<body>
+    <h1>Level Editor</h1>
+    <div id="editor-container">
+        <canvas id="editorCanvas" width="800" height="600"></canvas>
+        <div class="toolbar">
+            <h3>Tools</h3>
+            <button id="tool-platform" class="active">Draw Platform</button>
+            <button id="tool-start">Set Start (Player)</button>
+            <button id="tool-goal">Set Goal (End)</button>
+            <button id="tool-fan">Place Fan</button>
+            <select id="fan-direction" style="padding: 5px; background: #333; color: white; border: 1px solid #555;">
+                <option value="up">Blowing Up</option>
+                <option value="down">Blowing Down</option>
+                <option value="left">Blowing Left</option>
+                <option value="right">Blowing Right</option>
+            </select>
+            <button id="tool-delete">Delete Object</button>
+            <hr style="width: 100%; border-color: #444;">
+            <button id="btn-clear" style="background-color: #522;">Clear Level</button>
+            <button id="btn-save" style="background-color: #252;">Save & Play</button>
+            <div class="instructions">
+                <strong>Platform:</strong> Click and drag.<br>
+                <strong>Start/Goal/Fan:</strong> Click to place.<br>
+                <strong>Delete:</strong> Click on an object.
+            </div>
+        </div>
+    </div>
+    <script src="editor.js"></script>
+</body>
+</html>
