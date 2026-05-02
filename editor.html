@@ -73,6 +73,15 @@
                 <option value="left">Blowing Left</option>
                 <option value="right">Blowing Right</option>
             </select>
+            <br><br>
+            <button id="toggle-moving" style="background-color: #555;">Moving: OFF</button>
+            <select id="obj-axis" style="padding: 5px; background: #333; color: white; border: 1px solid #555; margin-left: 10px;">
+                <option value="x">Horizontal</option>
+                <option value="y">Vertical</option>
+            </select>
+            <input type="number" id="obj-speed" value="2" title="Speed" placeholder="Speed" style="width: 60px; padding: 5px; background: #333; color: white; border: 1px solid #555; margin-left: 5px;">
+            <input type="number" id="obj-range" value="100" title="Range" placeholder="Range" style="width: 60px; padding: 5px; background: #333; color: white; border: 1px solid #555; margin-left: 5px;">
+            <br><br>
             <button id="tool-delete">Delete Object</button>
             <hr style="width: 100%; border-color: #444;">
             <button id="btn-clear" style="background-color: #522;">Clear Level</button>

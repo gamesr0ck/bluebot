@@ -25,6 +25,38 @@ window.addEventListener('keyup', (e) => {
     }
 });
 
+// Mobile Controls
+const controlBtns = document.querySelectorAll('.control-btn');
+controlBtns.forEach(btn => {
+    const key = btn.getAttribute('data-key');
+    
+    // Touch events
+    btn.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        keys[key] = true;
+        btn.classList.add('active');
+    });
+    btn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        keys[key] = false;
+        btn.classList.remove('active');
+    });
+    
+    // Mouse events for testing on desktop
+    btn.addEventListener('mousedown', (e) => {
+        keys[key] = true;
+        btn.classList.add('active');
+    });
+    btn.addEventListener('mouseup', (e) => {
+        keys[key] = false;
+        btn.classList.remove('active');
+    });
+    btn.addEventListener('mouseleave', (e) => {
+        keys[key] = false;
+        btn.classList.remove('active');
+    });
+});
+
 const player = {
     x: 50,
     y: 50,
@@ -47,7 +79,9 @@ const player = {
     dashCooldown: 0,
     wallJumpCooldown: 0,
     shootCooldown: 0,
-    isDucking: false
+    isDucking: false,
+    currentPlatform: null,
+    invincibilityTimer: 0
 };
 
 let platforms = [
@@ -67,7 +101,12 @@ const savedLevel = localStorage.getItem('customLevel');
 if (savedLevel) {
     try {
         const levelData = JSON.parse(savedLevel);
-        if (levelData.platforms) platforms = levelData.platforms;
+        if (levelData.platforms) {
+            platforms = levelData.platforms;
+            for (let p of platforms) {
+                if (p.moving && p.startX === undefined) { p.startX = p.x; p.startY = p.y; }
+            }
+        }
         if (levelData.start) {
             player.x = levelData.start.x;
             player.y = levelData.start.y;
@@ -78,12 +117,40 @@ if (savedLevel) {
         } else {
             goal = { x: -1000, y: -1000, width: 0, height: 0, color: '#00ff00' };
         }
-        if (levelData.fans) fans = levelData.fans;
+        if (levelData.fans) {
+            fans = levelData.fans;
+            for (let f of fans) {
+                if (f.moving && f.startX === undefined) { f.startX = f.x; f.startY = f.y; }
+            }
+        }
     } catch(e) {}
 }
 let levelComplete = false;
-
+let playerHealth = 100;
 let projectiles = [];
+
+document.getElementById('btn-replay').addEventListener('click', () => {
+    location.reload();
+});
+
+function gameOver(win) {
+    levelComplete = true;
+    document.getElementById('end-screen').style.display = 'flex';
+    document.getElementById('end-title').innerText = win ? 'You Win!' : 'You Lose!';
+    document.getElementById('end-title').style.color = win ? '#00ff00' : '#ff0000';
+}
+
+function takeDamage(amount) {
+    if (player.invincibilityTimer > 0) return;
+    
+    playerHealth -= amount;
+    player.invincibilityTimer = 30; // Half a second of invincibility
+    
+    document.getElementById('health-bar').style.height = playerHealth + '%';
+    if (playerHealth <= 0) {
+        gameOver(false);
+    }
+}
 
 
 function checkCollision(rect1, rect2) {
@@ -95,6 +162,86 @@ function checkCollision(rect1, rect2) {
 
 function update() {
     if (levelComplete) return;
+
+    if (player.invincibilityTimer > 0) {
+        player.invincibilityTimer--;
+    }
+
+    // Moving Objects Logic
+    let allSolids = platforms.concat(fans);
+    for (let obj of allSolids) {
+        if (obj.moving) {
+            let dx = 0;
+            let dy = 0;
+            if (obj.axis === 'x') {
+                dx = obj.speed;
+                obj.x += dx;
+                if (Math.abs(obj.x - obj.startX) > obj.range) obj.speed *= -1;
+            } else if (obj.axis === 'y') {
+                dy = obj.speed;
+                obj.y += dy;
+                if (Math.abs(obj.y - obj.startY) > obj.range) obj.speed *= -1;
+            }
+            
+            let isSolid = platforms.includes(obj);
+            if (isSolid) {
+                let pushedX = false;
+                let pushedY = false;
+
+                // Push player if the platform physically moves into them
+                if (obj.axis === 'x' && checkCollision(player, obj)) {
+                    player.x += dx;
+                    pushedX = true;
+                    for (let other of platforms) {
+                        if (other !== obj && checkCollision(player, other)) {
+                            takeDamage(20);
+                            player.x -= dx; // Undo push to stay inside moving platform
+                            break;
+                        }
+                    }
+                }
+                if (obj.axis === 'y' && checkCollision(player, obj)) {
+                    player.y += dy;
+                    pushedY = true;
+                    for (let other of platforms) {
+                        if (other !== obj && checkCollision(player, other)) {
+                            takeDamage(20);
+                            player.y -= dy; // Undo push to stay inside moving platform
+                            break;
+                        }
+                    }
+                }
+                
+                // Carry player if they are standing on it
+                if (player.currentPlatform === obj) {
+                    if (obj.axis === 'x' && !pushedX) {
+                        player.x += dx;
+                        for (let other of platforms) {
+                            if (other !== obj && checkCollision(player, other)) {
+                                player.x -= dx; // Slide off
+                                break;
+                            }
+                        }
+                    }
+                    if (obj.axis === 'y' && !pushedY) {
+                        player.y += dy;
+                        for (let other of platforms) {
+                            if (other !== obj && checkCollision(player, other)) {
+                                if (dy < 0) {
+                                    takeDamage(20);
+                                    player.y -= dy; // Undo carry into ceiling
+                                    break;
+                                } else {
+                                    player.y -= dy; // Undo carry into floor
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     // Duck Logic
     if (keys.ArrowDown && player.grounded && !player.isDucking) {
@@ -207,6 +354,7 @@ function update() {
     // Vertical Collision
     player.y += player.vy;
     player.grounded = false;
+    player.currentPlatform = null;
 
     for (let platform of platforms) {
         if (checkCollision(player, platform)) {
@@ -214,6 +362,7 @@ function update() {
                 player.y = platform.y - player.height;
                 player.grounded = true;
                 player.wallSliding = false;
+                player.currentPlatform = platform;
             } else if (player.vy < 0) {
                 player.y = platform.y + platform.height;
             }
@@ -265,7 +414,17 @@ function update() {
 
     // Check Goal Collision
     if (checkCollision(player, goal)) {
-        levelComplete = true;
+        gameOver(true);
+    }
+    
+    // Check Pit Death
+    if (player.y > canvas.height + 50) {
+        gameOver(false);
+    }
+    
+    // Check Health Death
+    if (playerHealth <= 0) {
+        gameOver(false);
     }
 }
 
@@ -319,18 +478,6 @@ function draw() {
     const eyeX = player.facingRight ? player.x + 20 : player.x + 5;
     ctx.fillRect(eyeX, player.y + 10, 5, 5);
 
-    if (levelComplete) {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        
-        ctx.fillStyle = '#fff';
-        ctx.font = '40px "Courier New"';
-        ctx.textAlign = 'center';
-        ctx.fillText('LEVEL COMPLETE!', canvas.width / 2, canvas.height / 2);
-        
-        ctx.font = '20px "Courier New"';
-        ctx.fillText('Refresh to play again', canvas.width / 2, canvas.height / 2 + 40);
-    }
 }
 
 function gameLoop() {

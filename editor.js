@@ -53,11 +53,29 @@ function setTool(tool, element) {
     element.classList.add('active');
 }
 
+let isMovingEnabled = false;
+document.getElementById('toggle-moving').addEventListener('click', (e) => {
+    isMovingEnabled = !isMovingEnabled;
+    e.target.innerText = isMovingEnabled ? 'Moving: ON' : 'Moving: OFF';
+    e.target.style.backgroundColor = isMovingEnabled ? '#2a2' : '#555';
+});
+
+function getMovingProps() {
+    if (!isMovingEnabled) return null;
+    return {
+        axis: document.getElementById('obj-axis').value,
+        speed: parseFloat(document.getElementById('obj-speed').value) || 2,
+        range: parseFloat(document.getElementById('obj-range').value) || 100
+    };
+}
+
 // Canvas events
 canvas.addEventListener('mousedown', (e) => {
     const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
 
     if (currentTool === 'platform') {
         isDrawing = true;
@@ -72,16 +90,36 @@ canvas.addEventListener('mousedown', (e) => {
         draw();
     } else if (currentTool === 'fan') {
         const dir = document.getElementById('fan-direction').value;
-        levelData.fans.push({ x: mouseX, y: mouseY, width: 40, height: 40, dir: dir });
+        let f = { x: mouseX, y: mouseY, width: 40, height: 40, dir: dir };
+        let m = getMovingProps();
+        if (m) {
+            f.moving = true;
+            f.axis = m.axis;
+            f.speed = m.speed;
+            f.range = m.range;
+            f.startX = f.x;
+            f.startY = f.y;
+        }
+        levelData.fans.push(f);
         draw();
     } else if (currentTool === 'delete') {
         // Find clicked object
+        let deleted = false;
+        
+        // Check start
+        if (levelData.start && checkPointInRect(mouseX, mouseY, { x: levelData.start.x, y: levelData.start.y, width: 30, height: 40 })) {
+            levelData.start = null;
+            deleted = true;
+        }
+        
         // Check goal
-        if (levelData.goal && checkPointInRect(mouseX, mouseY, levelData.goal)) {
+        if (!deleted && levelData.goal && checkPointInRect(mouseX, mouseY, levelData.goal)) {
             levelData.goal = null;
-        } else {
-            let deleted = false;
-            // Check fans
+            deleted = true;
+        } 
+        
+        // Check fans
+        if (!deleted) {
             for (let i = levelData.fans.length - 1; i >= 0; i--) {
                 if (checkPointInRect(mouseX, mouseY, levelData.fans[i])) {
                     levelData.fans.splice(i, 1);
@@ -89,16 +127,18 @@ canvas.addEventListener('mousedown', (e) => {
                     break;
                 }
             }
-            if (!deleted) {
-                // Check platforms
-                for (let i = levelData.platforms.length - 1; i >= 0; i--) {
-                    if (checkPointInRect(mouseX, mouseY, levelData.platforms[i])) {
-                        levelData.platforms.splice(i, 1);
-                        break;
-                    }
+        }
+        
+        // Check platforms
+        if (!deleted) {
+            for (let i = levelData.platforms.length - 1; i >= 0; i--) {
+                if (checkPointInRect(mouseX, mouseY, levelData.platforms[i])) {
+                    levelData.platforms.splice(i, 1);
+                    break;
                 }
             }
         }
+        
         draw();
     }
 });
@@ -107,8 +147,10 @@ canvas.addEventListener('mousemove', (e) => {
     if (!isDrawing || currentTool !== 'platform') return;
     
     const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    const scaleX = canvas.width / rect.width;
+    const scaleY = canvas.height / rect.height;
+    const mouseX = (e.clientX - rect.left) * scaleX;
+    const mouseY = (e.clientY - rect.top) * scaleY;
 
     currentRect.x = Math.min(startX, mouseX);
     currentRect.y = Math.min(startY, mouseY);
@@ -119,7 +161,17 @@ canvas.addEventListener('mousemove', (e) => {
 
 canvas.addEventListener('mouseup', () => {
     if (isDrawing && currentTool === 'platform' && currentRect.width > 5 && currentRect.height > 5) {
-        levelData.platforms.push({ ...currentRect });
+        let p = { ...currentRect };
+        let m = getMovingProps();
+        if (m) {
+            p.moving = true;
+            p.axis = m.axis;
+            p.speed = m.speed;
+            p.range = m.range;
+            p.startX = p.x;
+            p.startY = p.y;
+        }
+        levelData.platforms.push(p);
     }
     isDrawing = false;
     currentRect = null;
@@ -137,8 +189,14 @@ function draw() {
     ctx.fillStyle = '#444';
     ctx.strokeStyle = '#222';
     for (let platform of levelData.platforms) {
+        ctx.fillStyle = platform.moving ? '#664' : '#444';
         ctx.fillRect(platform.x, platform.y, platform.width, platform.height);
         ctx.strokeRect(platform.x, platform.y, platform.width, platform.height);
+        if (platform.moving) {
+            ctx.fillStyle = '#ff0';
+            ctx.font = '10px Arial';
+            ctx.fillText(platform.axis === 'x' ? '↔' : '↕', platform.x + 2, platform.y + 10);
+        }
     }
 
     // Draw current drawing rect
@@ -157,11 +215,17 @@ function draw() {
     ctx.fillStyle = '#888';
     ctx.strokeStyle = '#fff';
     for (let fan of levelData.fans) {
+        ctx.fillStyle = fan.moving ? '#aa8' : '#888';
         ctx.fillRect(fan.x, fan.y, fan.width, fan.height);
         ctx.strokeRect(fan.x, fan.y, fan.width, fan.height);
         ctx.fillStyle = '#fff';
         ctx.font = '12px Arial';
         ctx.fillText(fan.dir, fan.x + 5, fan.y + 25);
+        if (fan.moving) {
+            ctx.fillStyle = '#ff0';
+            ctx.font = '10px Arial';
+            ctx.fillText(fan.axis === 'x' ? '↔' : '↕', fan.x + 2, fan.y + 10);
+        }
         ctx.fillStyle = '#888';
     }
 

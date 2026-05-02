@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Bluebot - Action Platformer</title>
     <link rel="stylesheet" href="style.css">
 </head>
@@ -14,9 +14,25 @@
                 <div id="health-bar"></div>
             </div>
             <div id="instructions">
-                Arrows: Move & Jump | X: Shoot | C: Dash
+                Arrows: Move & Jump | X: Shoot | C: Dash | Down: Duck
                 <br><br>
                 <a href="editor.html" style="color: #00aaff; text-decoration: none; border: 1px solid #00aaff; padding: 5px; background: rgba(0,0,0,0.5);">Open Level Editor</a>
+            </div>
+            <div id="mobile-controls">
+                <div class="d-pad">
+                    <button class="control-btn" data-key="ArrowLeft">←</button>
+                    <button class="control-btn" data-key="ArrowDown">↓</button>
+                    <button class="control-btn" data-key="ArrowRight">→</button>
+                </div>
+                <div class="action-buttons">
+                    <button class="control-btn action-btn" data-key="x">Shoot</button>
+                    <button class="control-btn action-btn" data-key="c">Dash</button>
+                    <button class="control-btn action-btn" data-key="ArrowUp">Jump</button>
+                </div>
+            </div>
+            <div id="end-screen" style="display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); flex-direction: column; justify-content: center; align-items: center; z-index: 100; pointer-events: auto;">
+                <h1 id="end-title" style="font-size: 50px; text-shadow: 2px 2px 0 #000; margin-bottom: 30px;">You Win!</h1>
+                <button id="btn-replay" style="padding: 15px 30px; font-size: 24px; font-weight: bold; background-color: #00aaff; color: white; border: 2px solid #fff; border-radius: 8px; cursor: pointer; text-transform: uppercase;">Replay</button>
             </div>
         </div>
     </div>
