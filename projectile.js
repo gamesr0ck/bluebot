@@ -8,8 +8,8 @@ export class Projectile {
         this.color = config.PROJECTILE.COLOR;
     }
 
-    update() {
-        this.x += this.vx;
+    update(dt) {
+        this.x += this.vx * dt;
     }
 
     isOffScreen(canvasWidth) {

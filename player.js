@@ -35,8 +35,8 @@ export class Player {
         }
     }
 
-    update(keys, platforms, fans, projectiles) {
-        if (this.invincibilityTimer > 0) this.invincibilityTimer--;
+    update(dt, keys, platforms, fans, projectiles) {
+        if (this.invincibilityTimer > 0) this.invincibilityTimer -= dt;
 
         // Duck Logic
         if (keys.ArrowDown && this.grounded && !this.isDucking) {
@@ -56,12 +56,12 @@ export class Player {
             this.dashCooldown = CONFIG.PLAYER.DASH_COOLDOWN;
         }
 
-        if (this.dashCooldown > 0) this.dashCooldown--;
+        if (this.dashCooldown > 0) this.dashCooldown -= dt;
 
         if (this.isDashing) {
             this.vy = 0;
             this.vx = this.facingRight ? CONFIG.PLAYER.DASH_SPEED : -CONFIG.PLAYER.DASH_SPEED;
-            this.dashTimer--;
+            this.dashTimer -= dt;
             if (this.dashTimer <= 0) {
                 this.isDashing = false;
             }
@@ -78,11 +78,11 @@ export class Player {
                     this.vx = 0;
                 }
             } else {
-                this.wallJumpCooldown--;
+                this.wallJumpCooldown -= dt;
             }
 
             // Apply Gravity
-            this.vy += CONFIG.PHYSICS.GRAVITY;
+            this.vy += CONFIG.PHYSICS.GRAVITY * dt;
             if (this.wallSliding && this.vy > 2) {
                 this.vy = 2; // Slide down slowly
             } else if (this.vy > CONFIG.PHYSICS.MAX_FALL_SPEED) {
@@ -92,21 +92,25 @@ export class Player {
 
         applyWind(this, fans, CONFIG);
 
+        let dx = this.vx * dt;
+        let dy = this.vy * dt;
+
         // Horizontal Collision
-        this.x += this.vx;
+        this.x += dx;
         this.wallSliding = false;
         let touchingWallDir = 0; // -1 for left, 1 for right
 
         for (let platform of platforms) {
             if (checkCollision(this, platform)) {
-                if (this.vx > 0) {
+                if (dx > 0) {
                     this.x = platform.x - this.width;
                     touchingWallDir = 1;
-                } else if (this.vx < 0) {
+                } else if (dx < 0) {
                     this.x = platform.x + platform.width;
                     touchingWallDir = -1;
                 }
                 this.vx = 0;
+                dx = 0;
                 if (!this.grounded && this.vy > 0 && !this.isDashing) {
                     this.wallSliding = true;
                 }
@@ -114,21 +118,22 @@ export class Player {
         }
 
         // Vertical Collision
-        this.y += this.vy;
+        this.y += dy;
         this.grounded = false;
         this.currentPlatform = null;
 
         for (let platform of platforms) {
             if (checkCollision(this, platform)) {
-                if (this.vy > 0) {
+                if (dy > 0) {
                     this.y = platform.y - this.height;
                     this.grounded = true;
                     this.wallSliding = false;
                     this.currentPlatform = platform;
-                } else if (this.vy < 0) {
+                } else if (dy < 0) {
                     this.y = platform.y + platform.height;
                 }
                 this.vy = 0;
+                dy = 0;
             }
         }
 
@@ -149,7 +154,7 @@ export class Player {
         }
 
         // Shoot Logic
-        if (this.shootCooldown > 0) this.shootCooldown--;
+        if (this.shootCooldown > 0) this.shootCooldown -= dt;
         
         if (keys.x && this.shootCooldown <= 0) {
             projectiles.push(new Projectile(

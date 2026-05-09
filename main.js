@@ -74,18 +74,18 @@ function gameOver(win) {
     document.getElementById('end-title').style.color = win ? '#00ff00' : '#ff0000';
 }
 
-function updateMovingObjects() {
+function updateMovingObjects(dt) {
     let allSolids = platforms.concat(fans);
     for (let obj of allSolids) {
         if (obj.moving) {
             let dx = 0;
             let dy = 0;
             if (obj.axis === 'x') {
-                dx = obj.speed;
+                dx = obj.speed * dt;
                 obj.x += dx;
                 if (Math.abs(obj.x - obj.startX) > obj.range) obj.speed *= -1;
             } else if (obj.axis === 'y') {
-                dy = obj.speed;
+                dy = obj.speed * dt;
                 obj.y += dy;
                 if (Math.abs(obj.y - obj.startY) > obj.range) obj.speed *= -1;
             }
@@ -151,17 +151,17 @@ function updateMovingObjects() {
     }
 }
 
-function update() {
+function update(dt) {
     if (levelComplete) return;
 
-    updateMovingObjects();
+    updateMovingObjects(dt);
 
-    player.update(inputManager.getKeys(), platforms, fans, projectiles);
+    player.update(dt, inputManager.getKeys(), platforms, fans, projectiles);
 
     // Update Projectiles
     for (let i = projectiles.length - 1; i >= 0; i--) {
         let p = projectiles[i];
-        p.update();
+        p.update(dt);
         if (p.isOffScreen(canvas.width)) {
             projectiles.splice(i, 1);
         }
@@ -170,7 +170,7 @@ function update() {
     // Update Enemies
     for (let i = enemies.length - 1; i >= 0; i--) {
         let en = enemies[i];
-        en.update(platforms, fans);
+        en.update(dt, platforms, fans);
         
         // Check collision with player
         if (checkCollision(player, en) && player.invincibilityTimer === 0) {
@@ -244,8 +244,16 @@ function draw() {
     player.draw(ctx);
 }
 
-function gameLoop() {
-    update();
+let lastTime = performance.now();
+
+function gameLoop(timestamp) {
+    if (!timestamp) timestamp = performance.now();
+    let dt = (timestamp - lastTime) / (1000 / 60);
+    lastTime = timestamp;
+
+    if (dt > 3) dt = 3; // Prevent huge jumps
+
+    update(dt);
     draw();
     requestAnimationFrame(gameLoop);
 }

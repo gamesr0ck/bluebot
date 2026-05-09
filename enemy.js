@@ -12,32 +12,36 @@ export class Enemy {
         this.vy = 0;
     }
 
-    update(platforms, fans) {
+    update(dt, platforms, fans) {
         this.vx = this.baseVx;
-        this.vy += CONFIG.PHYSICS.GRAVITY;
+        this.vy += CONFIG.PHYSICS.GRAVITY * dt;
         if (this.vy > CONFIG.PHYSICS.MAX_FALL_SPEED) this.vy = CONFIG.PHYSICS.MAX_FALL_SPEED;
 
         applyWind(this, fans, CONFIG);
 
-        this.y += this.vy;
+        let dx = this.vx * dt;
+        let dy = this.vy * dt;
+
+        this.y += dy;
         
         // Vertical collision
         for (let platform of platforms) {
             if (checkCollision(this, platform)) {
-                if (this.vy > 0) this.y = platform.y - this.height;
-                else if (this.vy < 0) this.y = platform.y + platform.height;
+                if (dy > 0) this.y = platform.y - this.height;
+                else if (dy < 0) this.y = platform.y + platform.height;
                 this.vy = 0;
+                dy = 0;
             }
         }
 
-        this.x += this.vx;
+        this.x += dx;
         
         let hitWall = false;
         for (let platform of platforms) {
             if (checkCollision(this, platform)) {
                 hitWall = true;
-                if (this.vx > 0) this.x = platform.x - this.width;
-                else if (this.vx < 0) this.x = platform.x + platform.width;
+                if (dx > 0) this.x = platform.x - this.width;
+                else if (dx < 0) this.x = platform.x + platform.width;
             }
         }
         
