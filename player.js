@@ -14,6 +14,7 @@ export class Player {
         this.wallSliding = false;
         this.facingRight = true;
         this.isDashing = false;
+        this.isUpDashing = false;
         this.dashTimer = 0;
         this.dashCooldown = 0;
         this.wallJumpCooldown = 0;
@@ -54,6 +55,7 @@ export class Player {
         // Dash Logic
         if (keys.c && this.dashCooldown <= 0 && !this.isDashing && !this.isDucking) {
             this.isDashing = true;
+            this.isUpDashing = keys.ArrowUp;
             this.dashTimer = CONFIG.PLAYER.DASH_DURATION;
             this.dashCooldown = CONFIG.PLAYER.DASH_COOLDOWN;
         }
@@ -61,11 +63,18 @@ export class Player {
         if (this.dashCooldown > 0) this.dashCooldown -= dt;
 
         if (this.isDashing) {
-            this.vy = 0;
-            this.vx = this.facingRight ? CONFIG.PLAYER.DASH_SPEED : -CONFIG.PLAYER.DASH_SPEED;
+            if (this.isUpDashing) {
+                this.vx = 0;
+                this.vy = -CONFIG.PLAYER.DASH_SPEED;
+            } else {
+                this.vy = 0;
+                this.vx = this.facingRight ? CONFIG.PLAYER.DASH_SPEED : -CONFIG.PLAYER.DASH_SPEED;
+            }
             this.dashTimer -= dt;
             if (this.dashTimer <= 0) {
                 this.isDashing = false;
+                this.isUpDashing = false;
+                if (this.isUpDashing) this.vy = 0; // Optional: kill momentum to avoid flying too high, but keeping it makes it go "higher"
             }
         } else {
             // Normal Horizontal
@@ -144,7 +153,7 @@ export class Player {
         }
 
         // Jump Logic
-        if (keys.ArrowUp && !this.isDucking) {
+        if (keys.ArrowUp && !this.isDucking && !this.isDashing) {
             if (this.grounded) {
                 this.vy = CONFIG.PLAYER.JUMP_POWER;
                 this.grounded = false;
