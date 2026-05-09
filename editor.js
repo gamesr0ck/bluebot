@@ -6,13 +6,14 @@ let currentTool = 'platform';
 
 let levelData = {
     platforms: [
-        { x: 0, y: 550, width: 800, height: 50 }, // Default floor
+        { x: 0, y: 550, width: 1200, height: 50 }, // Default floor
         { x: 0, y: 0, width: 20, height: 600 }, // Left wall
-        { x: 780, y: 0, width: 20, height: 600 } // Right wall
+        { x: 1180, y: 0, width: 20, height: 600 } // Right wall
     ],
     start: { x: 50, y: 50 },
     goal: { x: 700, y: 150, width: 40, height: 100 },
-    fans: []
+    fans: [],
+    enemies: []
 };
 
 // Load existing if available
@@ -21,6 +22,7 @@ if (saved) {
     try {
         levelData = JSON.parse(saved);
         if (!levelData.fans) levelData.fans = [];
+        if (!levelData.enemies) levelData.enemies = [];
     } catch(e) {}
 }
 
@@ -34,11 +36,13 @@ document.getElementById('tool-platform').addEventListener('click', (e) => setToo
 document.getElementById('tool-start').addEventListener('click', (e) => setTool('start', e.target));
 document.getElementById('tool-goal').addEventListener('click', (e) => setTool('goal', e.target));
 document.getElementById('tool-fan').addEventListener('click', (e) => setTool('fan', e.target));
+document.getElementById('tool-enemy').addEventListener('click', (e) => setTool('enemy', e.target));
 document.getElementById('tool-delete').addEventListener('click', (e) => setTool('delete', e.target));
 
 document.getElementById('btn-clear').addEventListener('click', () => {
     levelData.platforms = [];
     levelData.fans = [];
+    levelData.enemies = [];
     draw();
 });
 
@@ -102,6 +106,10 @@ canvas.addEventListener('mousedown', (e) => {
         }
         levelData.fans.push(f);
         draw();
+    } else if (currentTool === 'enemy') {
+        let en = { x: mouseX, y: mouseY - 30, width: 30, height: 30, vx: -2 };
+        levelData.enemies.push(en);
+        draw();
     } else if (currentTool === 'delete') {
         // Find clicked object
         let deleted = false;
@@ -123,6 +131,17 @@ canvas.addEventListener('mousedown', (e) => {
             for (let i = levelData.fans.length - 1; i >= 0; i--) {
                 if (checkPointInRect(mouseX, mouseY, levelData.fans[i])) {
                     levelData.fans.splice(i, 1);
+                    deleted = true;
+                    break;
+                }
+            }
+        }
+        
+        // Check enemies
+        if (!deleted) {
+            for (let i = levelData.enemies.length - 1; i >= 0; i--) {
+                if (checkPointInRect(mouseX, mouseY, levelData.enemies[i])) {
+                    levelData.enemies.splice(i, 1);
                     deleted = true;
                     break;
                 }
@@ -229,12 +248,46 @@ function draw() {
         ctx.fillStyle = '#888';
     }
 
+    // Draw enemies
+    for (let en of levelData.enemies) {
+        ctx.fillStyle = '#cc0000'; // Red body
+        ctx.fillRect(en.x, en.y, en.width, en.height);
+        // Angry eyes
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(en.x + 4, en.y + 8, 8, 8);
+        ctx.fillRect(en.x + 18, en.y + 8, 8, 8);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(en.x + 6, en.y + 10, 4, 4);
+        ctx.fillRect(en.x + 20, en.y + 10, 4, 4);
+    }
+
     // Draw start position (player preview)
     if (levelData.start) {
+        const cx = levelData.start.x + 15;
+        const py = levelData.start.y;
+        
+        // Helmet
         ctx.fillStyle = '#00aaff';
-        ctx.fillRect(levelData.start.x, levelData.start.y, 30, 40); // Standard player size
-        ctx.fillStyle = '#fff';
-        ctx.fillRect(levelData.start.x + 20, levelData.start.y + 10, 5, 5); // Eyes
+        ctx.fillRect(cx - 9, py, 18, 14);
+        // Face
+        ctx.fillStyle = '#ffccaa';
+        ctx.fillRect(cx, py + 4, 9, 8);
+        // Eye
+        ctx.fillStyle = '#000';
+        ctx.fillRect(cx + 4, py + 6, 3, 3);
+        
+        // Body
+        ctx.fillStyle = '#0055aa';
+        ctx.fillRect(cx - 7, py + 14, 14, 16);
+        
+        // Legs
+        ctx.fillStyle = '#00aaff';
+        ctx.fillRect(cx - 6, py + 30, 5, 10);
+        ctx.fillRect(cx + 1, py + 30, 5, 10);
+        
+        // Arm / Buster
+        ctx.fillStyle = '#00aaaa';
+        ctx.fillRect(cx + 3, py + 18, 12, 6);
     }
 }
 

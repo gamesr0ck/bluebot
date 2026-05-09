@@ -85,17 +85,18 @@ const player = {
 };
 
 let platforms = [
-    { x: 0, y: 550, width: 800, height: 50 }, // Floor
+    { x: 0, y: 550, width: 1200, height: 50 }, // Floor
     { x: 200, y: 450, width: 100, height: 20 },
     { x: 400, y: 350, width: 150, height: 20 },
     { x: 650, y: 250, width: 100, height: 20 },
     { x: 0, y: 0, width: 20, height: 600 }, // Left wall
-    { x: 780, y: 0, width: 20, height: 600 }, // Right wall
+    { x: 1180, y: 0, width: 20, height: 600 }, // Right wall
     { x: 300, y: 150, width: 20, height: 200 }, // Wall jump test wall
 ];
 
 let goal = { x: 700, y: 150, width: 40, height: 100, color: '#00ff00' };
 let fans = [];
+let enemies = [];
 
 const savedLevel = localStorage.getItem('customLevel');
 if (savedLevel) {
@@ -121,6 +122,13 @@ if (savedLevel) {
             fans = levelData.fans;
             for (let f of fans) {
                 if (f.moving && f.startX === undefined) { f.startX = f.x; f.startY = f.y; }
+            }
+        }
+        if (levelData.enemies) {
+            enemies = levelData.enemies;
+            for (let en of enemies) {
+                en.vy = 0;
+                if (!en.vx) en.vx = -2;
             }
         }
     } catch(e) {}
@@ -158,6 +166,42 @@ function checkCollision(rect1, rect2) {
            rect1.x + rect1.width > rect2.x &&
            rect1.y < rect2.y + rect2.height &&
            rect1.y + rect1.height > rect2.y;
+}
+
+function applyWind(entity) {
+    let hasWindX = false;
+    let hasWindY = false;
+    let windVx = 0;
+    let windVy = 0;
+    let closestDist = Infinity;
+    
+    for (let fan of fans) {
+        let windZone;
+        if (fan.dir === 'right') windZone = {x: fan.x, y: fan.y, width: 2000, height: fan.height};
+        if (fan.dir === 'left') windZone = {x: fan.x - 2000, y: fan.y, width: 2000 + fan.width, height: fan.height};
+        if (fan.dir === 'up') windZone = {x: fan.x, y: fan.y - 2000, width: fan.width, height: 2000 + fan.height};
+        if (fan.dir === 'down') windZone = {x: fan.x, y: fan.y, width: fan.width, height: 2000};
+        
+        let inBlock = checkCollision(entity, fan);
+        if (checkCollision(entity, windZone) || inBlock) {
+            let dist = Math.abs(entity.x - fan.x) + Math.abs(entity.y - fan.y);
+            if (inBlock) dist = -1; // Highest priority if touching the fan block itself
+            
+            if (dist < closestDist) {
+                closestDist = dist;
+                windVx = 0; windVy = 0;
+                hasWindX = false; hasWindY = false;
+                
+                if (fan.dir === 'right') { windVx = 10; hasWindX = true; }
+                if (fan.dir === 'left') { windVx = -10; hasWindX = true; }
+                if (fan.dir === 'up') { windVy = -8; hasWindY = true; }
+                if (fan.dir === 'down') { windVy = 10; hasWindY = true; }
+            }
+        }
+    }
+    
+    if (hasWindX) entity.vx = windVx;
+    if (hasWindY) entity.vy = windVy;
 }
 
 function update() {
@@ -296,39 +340,7 @@ function update() {
     }
 
     // Wind Logic
-    let hasWindX = false;
-    let hasWindY = false;
-    let windVx = 0;
-    let windVy = 0;
-    let closestDist = Infinity;
-    
-    for (let fan of fans) {
-        let windZone;
-        if (fan.dir === 'right') windZone = {x: fan.x, y: fan.y, width: 2000, height: fan.height};
-        if (fan.dir === 'left') windZone = {x: fan.x - 2000, y: fan.y, width: 2000 + fan.width, height: fan.height};
-        if (fan.dir === 'up') windZone = {x: fan.x, y: fan.y - 2000, width: fan.width, height: 2000 + fan.height};
-        if (fan.dir === 'down') windZone = {x: fan.x, y: fan.y, width: fan.width, height: 2000};
-        
-        let inBlock = checkCollision(player, fan);
-        if (checkCollision(player, windZone) || inBlock) {
-            let dist = Math.abs(player.x - fan.x) + Math.abs(player.y - fan.y);
-            if (inBlock) dist = -1; // Highest priority if touching the fan block itself
-            
-            if (dist < closestDist) {
-                closestDist = dist;
-                windVx = 0; windVy = 0;
-                hasWindX = false; hasWindY = false;
-                
-                if (fan.dir === 'right') { windVx = 10; hasWindX = true; }
-                if (fan.dir === 'left') { windVx = -10; hasWindX = true; }
-                if (fan.dir === 'up') { windVy = -8; hasWindY = true; }
-                if (fan.dir === 'down') { windVy = 10; hasWindY = true; }
-            }
-        }
-    }
-    
-    if (hasWindX) player.vx = windVx;
-    if (hasWindY) player.vy = windVy;
+    applyWind(player);
 
     // Horizontal Collision
     player.x += player.vx;
@@ -412,6 +424,93 @@ function update() {
         }
     }
 
+    // Update Enemies
+    for (let i = enemies.length - 1; i >= 0; i--) {
+        let en = enemies[i];
+        
+        if (en.baseVx === undefined) en.baseVx = en.vx || -2;
+        en.vx = en.baseVx;
+        
+        // Apply gravity
+        en.vy = (en.vy || 0) + player.gravity;
+        if (en.vy > player.maxFallSpeed) en.vy = player.maxFallSpeed;
+        
+        // Apply wind
+        applyWind(en);
+        
+        en.y += en.vy;
+        
+        // Vertical collision for enemies
+        for (let platform of platforms) {
+            if (checkCollision(en, platform)) {
+                if (en.vy > 0) {
+                    en.y = platform.y - en.height;
+                } else if (en.vy < 0) {
+                    en.y = platform.y + platform.height;
+                }
+                en.vy = 0;
+            }
+        }
+
+        // Horizontal movement
+        en.x += en.vx;
+        
+        // Horizontal collision for enemies
+        let hitWall = false;
+        for (let platform of platforms) {
+            if (checkCollision(en, platform)) {
+                hitWall = true;
+                if (en.vx > 0) {
+                    en.x = platform.x - en.width;
+                } else if (en.vx < 0) {
+                    en.x = platform.x + platform.width;
+                }
+            }
+        }
+        
+        // Edge detection (Goomba style)
+        let checkX = en.baseVx > 0 ? en.x + en.width + 5 : en.x - 5;
+        let checkY = en.y + en.height + 5;
+        let hasFloor = false;
+        for (let platform of platforms) {
+            if (checkX >= platform.x && checkX <= platform.x + platform.width &&
+                checkY >= platform.y && checkY <= platform.y + platform.height) {
+                hasFloor = true;
+                break;
+            }
+        }
+        
+        if (hitWall || (!hasFloor && en.vy === 0)) {
+            en.baseVx *= -1; // reverse direction
+            en.vx = en.baseVx;
+        }
+        
+        // Check collision with player
+        if (checkCollision(player, en) && player.invincibilityTimer === 0) {
+            // Did player jump on top?
+            if (player.vy > 0 && player.y + player.height < en.y + en.height / 2 + 10) {
+                enemies.splice(i, 1);
+                player.vy = player.jumpPower * 0.8; // bounce off enemy
+                continue;
+            } else {
+                takeDamage(20);
+                if (!player.isDashing) {
+                    player.vx = player.x < en.x ? -5 : 5;
+                    player.vy = -5; // Knockback
+                }
+            }
+        }
+        
+        // Check collision with projectiles
+        for (let j = projectiles.length - 1; j >= 0; j--) {
+            if (checkCollision(projectiles[j], en)) {
+                projectiles.splice(j, 1);
+                enemies.splice(i, 1);
+                break;
+            }
+        }
+    }
+
     // Check Goal Collision
     if (checkCollision(player, goal)) {
         gameOver(true);
@@ -469,14 +568,81 @@ function draw() {
         ctx.fillRect(p.x, p.y, p.width, p.height);
     }
 
-    // Draw player
-    ctx.fillStyle = player.isDashing ? '#00ffff' : player.color;
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-    
-    // Draw player eyes/direction indicator
-    ctx.fillStyle = '#fff';
-    const eyeX = player.facingRight ? player.x + 20 : player.x + 5;
-    ctx.fillRect(eyeX, player.y + 10, 5, 5);
+    // Draw enemies
+    for (let en of enemies) {
+        ctx.fillStyle = '#cc0000'; // Red body
+        ctx.fillRect(en.x, en.y, en.width, en.height);
+        
+        // Angry eyes
+        let dir = en.vx > 0 ? 2 : -2;
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(en.x + 4 + dir, en.y + 8, 8, 8);
+        ctx.fillRect(en.x + 18 + dir, en.y + 8, 8, 8);
+        ctx.fillStyle = '#000';
+        ctx.fillRect(en.x + 6 + dir, en.y + 10, 4, 4);
+        ctx.fillRect(en.x + 20 + dir, en.y + 10, 4, 4);
+    }
+
+    // Draw player (humanoid robot)
+    if (player.invincibilityTimer === 0 || Math.floor(Date.now() / 100) % 2 === 0) {
+        const cx = player.x + player.width / 2;
+        const py = player.y;
+        
+        ctx.fillStyle = player.isDashing ? '#00ffff' : player.color;
+        
+        if (player.isDucking) {
+            // Helmet
+            ctx.fillRect(cx - 9, py, 18, 14);
+            // Face
+            ctx.fillStyle = '#ffccaa';
+            ctx.fillRect(player.facingRight ? cx : cx - 9, py + 4, 9, 8);
+            // Eye
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.facingRight ? cx + 4 : cx - 7, py + 6, 3, 3);
+            // Body (squished)
+            ctx.fillStyle = player.isDashing ? '#00ffff' : '#0055aa';
+            ctx.fillRect(cx - 10, py + 14, 20, 6);
+        } else {
+            // Helmet
+            ctx.fillRect(cx - 9, py, 18, 14);
+            // Face
+            ctx.fillStyle = '#ffccaa';
+            ctx.fillRect(player.facingRight ? cx : cx - 9, py + 4, 9, 8);
+            // Eye
+            ctx.fillStyle = '#000';
+            ctx.fillRect(player.facingRight ? cx + 4 : cx - 7, py + 6, 3, 3);
+            
+            // Body
+            ctx.fillStyle = player.isDashing ? '#00ffff' : '#0055aa';
+            ctx.fillRect(cx - 7, py + 14, 14, 16);
+            
+            // Legs
+            ctx.fillStyle = player.isDashing ? '#00ffff' : player.color;
+            if (player.vx !== 0 && player.grounded && !player.wallSliding) {
+                // Running
+                const time = Date.now() / 100;
+                const legOffset = Math.sin(time) * 5;
+                ctx.fillRect(cx - 6 + legOffset, py + 30, 5, 10);
+                ctx.fillRect(cx + 1 - legOffset, py + 30, 5, 10);
+            } else if (!player.grounded) {
+                // Jumping
+                ctx.fillRect(cx - 8, py + 28, 6, 8);
+                ctx.fillRect(cx + 2, py + 28, 6, 8);
+            } else {
+                // Standing
+                ctx.fillRect(cx - 6, py + 30, 5, 10);
+                ctx.fillRect(cx + 1, py + 30, 5, 10);
+            }
+            
+            // Arm / Buster
+            ctx.fillStyle = player.isDashing ? '#ffffff' : '#00aaaa';
+            if (player.facingRight) {
+                ctx.fillRect(cx + 3, py + 18, 12, 6);
+            } else {
+                ctx.fillRect(cx - 15, py + 18, 12, 6);
+            }
+        }
+    }
 
 }
 
