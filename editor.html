@@ -81,6 +81,15 @@
                 <option value="left">Portal Facing Left</option>
                 <option value="right">Portal Facing Right</option>
             </select>
+            <br>
+            <button id="tool-spike" style="background-color: #522; color: #fff;">Draw Spike Box</button>
+            <select id="spike-direction" style="padding: 5px; background: #333; color: white; border: 1px solid #555; margin-top: 5px;">
+                <option value="up">Spikes on Top</option>
+                <option value="down">Spikes on Bottom</option>
+                <option value="left">Spikes on Left</option>
+                <option value="right">Spikes on Right</option>
+                <option value="all">Spikes on All Sides</option>
+            </select>
             <br><br>
             <button id="toggle-moving" style="background-color: #555;">Moving: OFF</button>
             <select id="obj-axis" style="padding: 5px; background: #333; color: white; border: 1px solid #555; margin-left: 10px;">
@@ -94,8 +103,11 @@
             <hr style="width: 100%; border-color: #444;">
             <button id="btn-clear" style="background-color: #522;">Clear Level</button>
             <button id="btn-save" style="background-color: #252;">Save & Play</button>
+            <button id="btn-download" style="background-color: #255;">Download as JS</button>
+            <button id="btn-load" style="background-color: #552;">Load JS Level</button>
+            <input type="file" id="file-load" accept=".js" style="display: none;">
             <div class="instructions">
-                <strong>Platform/Portal:</strong> Click and drag.<br>
+                <strong>Platform/Portal/Spike:</strong> Click and drag.<br>
                 <strong>Start/Goal/Fan:</strong> Click to place.<br>
                 <strong>Delete:</strong> Click on an object.
             </div>

@@ -25,6 +25,7 @@ let fans = [];
 let enemies = [];
 let projectiles = [];
 let portals = [];
+let spikes = [];
 let levelComplete = false;
 
 // Initialize Level
@@ -82,6 +83,19 @@ function initLevel() {
         ];
         portals[0].pair = portals[1];
         portals[1].pair = portals[0];
+    }
+    
+    if (savedLevel) {
+        try {
+            const levelData = JSON.parse(savedLevel);
+            if (levelData.spikes) {
+                spikes = levelData.spikes;
+            } else {
+                spikes = [];
+            }
+        } catch(e) {}
+    } else {
+        spikes = [];
     }
 }
 
@@ -228,6 +242,16 @@ function update(dt) {
     if (player.y > canvas.height + 50) {
         gameOver(false);
     }
+
+    // Check Spike Collision
+    for (let spike of spikes) {
+        if (checkCollision(player, spike)) {
+            player.health = 0;
+            document.getElementById('health-bar').style.height = '0%';
+            gameOver(false);
+            return;
+        }
+    }
 }
 
 function draw() {
@@ -267,6 +291,29 @@ function draw() {
         ctx.globalAlpha = 0.5;
         ctx.fillRect(portal.x + 2, portal.y + 2, portal.width - 4, portal.height - 4);
         ctx.globalAlpha = 1.0;
+    }
+
+    for (let spike of spikes) {
+        ctx.fillStyle = '#666';
+        ctx.fillRect(spike.x, spike.y, spike.width, spike.height);
+        
+        ctx.strokeStyle = '#f00';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        if (spike.dir === 'up' || spike.dir === 'all') {
+            ctx.moveTo(spike.x, spike.y); ctx.lineTo(spike.x + spike.width, spike.y);
+        }
+        if (spike.dir === 'down' || spike.dir === 'all') {
+            ctx.moveTo(spike.x, spike.y + spike.height); ctx.lineTo(spike.x + spike.width, spike.y + spike.height);
+        }
+        if (spike.dir === 'left' || spike.dir === 'all') {
+            ctx.moveTo(spike.x, spike.y); ctx.lineTo(spike.x, spike.y + spike.height);
+        }
+        if (spike.dir === 'right' || spike.dir === 'all') {
+            ctx.moveTo(spike.x + spike.width, spike.y); ctx.lineTo(spike.x + spike.width, spike.y + spike.height);
+        }
+        ctx.stroke();
+        ctx.lineWidth = 1;
     }
 
     for (let p of projectiles) p.draw(ctx);

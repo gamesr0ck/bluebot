@@ -14,7 +14,8 @@ let levelData = {
     goal: { x: 700, y: 150, width: 40, height: 100 },
     fans: [],
     enemies: [],
-    portals: []
+    portals: [],
+    spikes: []
 };
 
 // Load existing if available
@@ -25,6 +26,7 @@ if (saved) {
         if (!levelData.fans) levelData.fans = [];
         if (!levelData.enemies) levelData.enemies = [];
         if (!levelData.portals) levelData.portals = [];
+        if (!levelData.spikes) levelData.spikes = [];
     } catch(e) {}
 }
 
@@ -40,6 +42,7 @@ document.getElementById('tool-goal').addEventListener('click', (e) => setTool('g
 document.getElementById('tool-fan').addEventListener('click', (e) => setTool('fan', e.target));
 document.getElementById('tool-enemy').addEventListener('click', (e) => setTool('enemy', e.target));
 document.getElementById('tool-portal').addEventListener('click', (e) => setTool('portal', e.target));
+document.getElementById('tool-spike').addEventListener('click', (e) => setTool('spike', e.target));
 document.getElementById('tool-delete').addEventListener('click', (e) => setTool('delete', e.target));
 
 document.getElementById('btn-clear').addEventListener('click', () => {
@@ -47,12 +50,51 @@ document.getElementById('btn-clear').addEventListener('click', () => {
     levelData.fans = [];
     levelData.enemies = [];
     levelData.portals = [];
+    levelData.spikes = [];
     draw();
 });
 
 document.getElementById('btn-save').addEventListener('click', () => {
     localStorage.setItem('customLevel', JSON.stringify(levelData));
     window.location.href = 'index.html'; // Go back to game
+});
+
+document.getElementById('btn-download').addEventListener('click', () => {
+    const jsContent = `const customLevelData = ${JSON.stringify(levelData, null, 4)};\n`;
+    const blob = new Blob([jsContent], { type: 'text/javascript' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'custom_level.js';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+});
+
+document.getElementById('btn-load').addEventListener('click', () => {
+    document.getElementById('file-load').click();
+});
+
+document.getElementById('file-load').addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (event) => {
+        const content = event.target.result;
+        try {
+            const jsonStr = content.substring(content.indexOf('{'), content.lastIndexOf('}') + 1);
+            levelData = JSON.parse(jsonStr);
+            if (!levelData.fans) levelData.fans = [];
+            if (!levelData.enemies) levelData.enemies = [];
+            if (!levelData.portals) levelData.portals = [];
+            if (!levelData.spikes) levelData.spikes = [];
+            draw();
+        } catch (err) {
+            alert('Failed to parse level file.');
+        }
+    };
+    reader.readAsText(file);
 });
 
 function setTool(tool, element) {
@@ -85,7 +127,7 @@ canvas.addEventListener('mousedown', (e) => {
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
 
-    if (currentTool === 'platform' || currentTool === 'portal') {
+    if (currentTool === 'platform' || currentTool === 'portal' || currentTool === 'spike') {
         isDrawing = true;
         startX = mouseX;
         startY = mouseY;
@@ -157,6 +199,17 @@ canvas.addEventListener('mousedown', (e) => {
                 }
             }
         }
+
+        // Check spikes
+        if (!deleted && levelData.spikes) {
+            for (let i = levelData.spikes.length - 1; i >= 0; i--) {
+                if (checkPointInRect(mouseX, mouseY, levelData.spikes[i])) {
+                    levelData.spikes.splice(i, 1);
+                    deleted = true;
+                    break;
+                }
+            }
+        }
         
         // Check enemies
         if (!deleted) {
@@ -184,7 +237,7 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
-    if (!isDrawing || (currentTool !== 'platform' && currentTool !== 'portal')) return;
+    if (!isDrawing || (currentTool !== 'platform' && currentTool !== 'portal' && currentTool !== 'spike')) return;
     
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -222,6 +275,12 @@ canvas.addEventListener('mouseup', () => {
             ...currentRect,
             dir: dir,
             color: color
+        });
+    } else if (isDrawing && currentTool === 'spike' && currentRect.width > 5 && currentRect.height > 5) {
+        const dir = document.getElementById('spike-direction').value;
+        levelData.spikes.push({
+            ...currentRect,
+            dir: dir
         });
     }
     isDrawing = false;
@@ -306,6 +365,32 @@ function draw() {
             ctx.fillStyle = '#fff';
             ctx.font = '10px Arial';
             ctx.fillText(portal.dir, portal.x + 2, portal.y + 12);
+        }
+    }
+
+    // Draw spikes
+    if (levelData.spikes) {
+        for (let spike of levelData.spikes) {
+            ctx.fillStyle = '#666';
+            ctx.fillRect(spike.x, spike.y, spike.width, spike.height);
+            
+            ctx.strokeStyle = '#f00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            if (spike.dir === 'up' || spike.dir === 'all') {
+                ctx.moveTo(spike.x, spike.y); ctx.lineTo(spike.x + spike.width, spike.y);
+            }
+            if (spike.dir === 'down' || spike.dir === 'all') {
+                ctx.moveTo(spike.x, spike.y + spike.height); ctx.lineTo(spike.x + spike.width, spike.y + spike.height);
+            }
+            if (spike.dir === 'left' || spike.dir === 'all') {
+                ctx.moveTo(spike.x, spike.y); ctx.lineTo(spike.x, spike.y + spike.height);
+            }
+            if (spike.dir === 'right' || spike.dir === 'all') {
+                ctx.moveTo(spike.x + spike.width, spike.y); ctx.lineTo(spike.x + spike.width, spike.y + spike.height);
+            }
+            ctx.stroke();
+            ctx.lineWidth = 1;
         }
     }
 
