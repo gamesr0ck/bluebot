@@ -1,5 +1,5 @@
 import { CONFIG } from './config.js';
-import { checkCollision, applyWind } from './physics.js';
+import { checkCollision, applyWind, handlePortals } from './physics.js';
 
 export class Enemy {
     constructor(x, y, vx) {
@@ -10,14 +10,21 @@ export class Enemy {
         this.baseVx = vx || CONFIG.ENEMY.BASE_SPEED;
         this.vx = this.baseVx;
         this.vy = 0;
+        this.portalMomentumTimer = 0;
     }
 
-    update(dt, platforms, fans) {
-        this.vx = this.baseVx;
+    update(dt, platforms, fans, portals) {
+        if (this.portalMomentumTimer > 0) {
+            this.portalMomentumTimer -= dt;
+        } else {
+            this.vx = this.baseVx;
+        }
         this.vy += CONFIG.PHYSICS.GRAVITY * dt;
         if (this.vy > CONFIG.PHYSICS.MAX_FALL_SPEED) this.vy = CONFIG.PHYSICS.MAX_FALL_SPEED;
 
         applyWind(this, fans, CONFIG);
+
+        if (portals) handlePortals(this, portals);
 
         let dx = this.vx * dt;
         let dy = this.vy * dt;

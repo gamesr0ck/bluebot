@@ -24,6 +24,7 @@ let goal = { x: 700, y: 150, width: 40, height: 100, color: '#00ff00' };
 let fans = [];
 let enemies = [];
 let projectiles = [];
+let portals = [];
 let levelComplete = false;
 
 // Initialize Level
@@ -59,7 +60,28 @@ function initLevel() {
             if (levelData.enemies) {
                 enemies = levelData.enemies.map(en => new Enemy(en.x, en.y, en.vx));
             }
+            if (levelData.portals && levelData.portals.length > 0) {
+                portals = levelData.portals;
+                for (let i = 0; i < portals.length - 1; i += 2) {
+                    portals[i].pair = portals[i+1];
+                    portals[i+1].pair = portals[i];
+                }
+            } else {
+                portals = [
+                    { x: 100, y: 530, width: 40, height: 20, dir: 'up', color: '#ff8800' },
+                    { x: 1160, y: 300, width: 20, height: 60, dir: 'left', color: '#0088ff' }
+                ];
+                portals[0].pair = portals[1];
+                portals[1].pair = portals[0];
+            }
         } catch(e) {}
+    } else {
+        portals = [
+            { x: 100, y: 530, width: 40, height: 20, dir: 'up', color: '#ff8800' },
+            { x: 1160, y: 300, width: 20, height: 60, dir: 'left', color: '#0088ff' }
+        ];
+        portals[0].pair = portals[1];
+        portals[1].pair = portals[0];
     }
 }
 
@@ -156,7 +178,7 @@ function update(dt) {
 
     updateMovingObjects(dt);
 
-    player.update(dt, inputManager.getKeys(), platforms, fans, projectiles);
+    player.update(dt, inputManager.getKeys(), platforms, fans, portals, projectiles);
 
     // Update Projectiles
     for (let i = projectiles.length - 1; i >= 0; i--) {
@@ -170,7 +192,7 @@ function update(dt) {
     // Update Enemies
     for (let i = enemies.length - 1; i >= 0; i--) {
         let en = enemies[i];
-        en.update(dt, platforms, fans);
+        en.update(dt, platforms, fans, portals);
         
         // Check collision with player
         if (checkCollision(player, en) && player.invincibilityTimer === 0) {
@@ -236,6 +258,15 @@ function draw() {
         if (fan.dir === 'left') ctx.fillRect(0, fan.y + 10, fan.x, 20);
         if (fan.dir === 'up') ctx.fillRect(fan.x + 10, 0, 20, fan.y);
         if (fan.dir === 'down') ctx.fillRect(fan.x + 10, fan.y + fan.height, 20, canvas.height);
+    }
+
+    for (let portal of portals) {
+        ctx.fillStyle = portal.color;
+        ctx.fillRect(portal.x, portal.y, portal.width, portal.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.5;
+        ctx.fillRect(portal.x + 2, portal.y + 2, portal.width - 4, portal.height - 4);
+        ctx.globalAlpha = 1.0;
     }
 
     for (let p of projectiles) p.draw(ctx);

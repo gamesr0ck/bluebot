@@ -68,11 +68,18 @@
             <button id="tool-goal">Set Goal (End)</button>
             <button id="tool-fan">Place Fan</button>
             <button id="tool-enemy" style="background-color: #822; color: #fff;">Place Enemy (Goomba)</button>
+            <button id="tool-portal" style="background-color: #83a; color: #fff;">Draw Portal</button>
             <select id="fan-direction" style="padding: 5px; background: #333; color: white; border: 1px solid #555;">
                 <option value="up">Blowing Up</option>
                 <option value="down">Blowing Down</option>
                 <option value="left">Blowing Left</option>
                 <option value="right">Blowing Right</option>
+            </select>
+            <select id="portal-direction" style="padding: 5px; background: #333; color: white; border: 1px solid #555; margin-top: 5px;">
+                <option value="up">Portal Facing Up</option>
+                <option value="down">Portal Facing Down</option>
+                <option value="left">Portal Facing Left</option>
+                <option value="right">Portal Facing Right</option>
             </select>
             <br><br>
             <button id="toggle-moving" style="background-color: #555;">Moving: OFF</button>
@@ -88,7 +95,7 @@
             <button id="btn-clear" style="background-color: #522;">Clear Level</button>
             <button id="btn-save" style="background-color: #252;">Save & Play</button>
             <div class="instructions">
-                <strong>Platform:</strong> Click and drag.<br>
+                <strong>Platform/Portal:</strong> Click and drag.<br>
                 <strong>Start/Goal/Fan:</strong> Click to place.<br>
                 <strong>Delete:</strong> Click on an object.
             </div>

@@ -1,5 +1,5 @@
 import { CONFIG } from './config.js';
-import { checkCollision, applyWind } from './physics.js';
+import { checkCollision, applyWind, handlePortals } from './physics.js';
 import { Projectile } from './projectile.js';
 
 export class Player {
@@ -22,6 +22,7 @@ export class Player {
         this.currentPlatform = null;
         this.invincibilityTimer = 0;
         this.health = 100;
+        this.portalMomentumTimer = 0;
     }
 
     takeDamage(amount, onDeath) {
@@ -35,8 +36,9 @@ export class Player {
         }
     }
 
-    update(dt, keys, platforms, fans, projectiles) {
+    update(dt, keys, platforms, fans, portals, projectiles) {
         if (this.invincibilityTimer > 0) this.invincibilityTimer -= dt;
+        if (this.portalMomentumTimer > 0) this.portalMomentumTimer -= dt;
 
         // Duck Logic
         if (keys.ArrowDown && this.grounded && !this.isDucking) {
@@ -67,7 +69,11 @@ export class Player {
             }
         } else {
             // Normal Horizontal
-            if (this.wallJumpCooldown <= 0) {
+            if (this.wallJumpCooldown > 0) {
+                this.wallJumpCooldown -= dt;
+            } else if (this.portalMomentumTimer > 0) {
+                // Preserve momentum from portal
+            } else {
                 if (keys.ArrowLeft && !this.isDucking) {
                     this.vx = -CONFIG.PLAYER.SPEED;
                     this.facingRight = false;
@@ -77,8 +83,6 @@ export class Player {
                 } else {
                     this.vx = 0;
                 }
-            } else {
-                this.wallJumpCooldown -= dt;
             }
 
             // Apply Gravity
@@ -91,6 +95,8 @@ export class Player {
         }
 
         applyWind(this, fans, CONFIG);
+
+        if (portals) handlePortals(this, portals);
 
         let dx = this.vx * dt;
         let dy = this.vy * dt;

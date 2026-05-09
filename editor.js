@@ -13,7 +13,8 @@ let levelData = {
     start: { x: 50, y: 50 },
     goal: { x: 700, y: 150, width: 40, height: 100 },
     fans: [],
-    enemies: []
+    enemies: [],
+    portals: []
 };
 
 // Load existing if available
@@ -23,6 +24,7 @@ if (saved) {
         levelData = JSON.parse(saved);
         if (!levelData.fans) levelData.fans = [];
         if (!levelData.enemies) levelData.enemies = [];
+        if (!levelData.portals) levelData.portals = [];
     } catch(e) {}
 }
 
@@ -37,12 +39,14 @@ document.getElementById('tool-start').addEventListener('click', (e) => setTool('
 document.getElementById('tool-goal').addEventListener('click', (e) => setTool('goal', e.target));
 document.getElementById('tool-fan').addEventListener('click', (e) => setTool('fan', e.target));
 document.getElementById('tool-enemy').addEventListener('click', (e) => setTool('enemy', e.target));
+document.getElementById('tool-portal').addEventListener('click', (e) => setTool('portal', e.target));
 document.getElementById('tool-delete').addEventListener('click', (e) => setTool('delete', e.target));
 
 document.getElementById('btn-clear').addEventListener('click', () => {
     levelData.platforms = [];
     levelData.fans = [];
     levelData.enemies = [];
+    levelData.portals = [];
     draw();
 });
 
@@ -81,7 +85,7 @@ canvas.addEventListener('mousedown', (e) => {
     const mouseX = (e.clientX - rect.left) * scaleX;
     const mouseY = (e.clientY - rect.top) * scaleY;
 
-    if (currentTool === 'platform') {
+    if (currentTool === 'platform' || currentTool === 'portal') {
         isDrawing = true;
         startX = mouseX;
         startY = mouseY;
@@ -137,6 +141,23 @@ canvas.addEventListener('mousedown', (e) => {
             }
         }
         
+        // Check portals
+        if (!deleted && levelData.portals) {
+            for (let i = levelData.portals.length - 1; i >= 0; i--) {
+                if (checkPointInRect(mouseX, mouseY, levelData.portals[i])) {
+                    let pairedIndex = i % 2 === 0 ? i + 1 : i - 1;
+                    if (pairedIndex < levelData.portals.length && pairedIndex >= 0) {
+                        levelData.portals.splice(Math.max(i, pairedIndex), 1);
+                        levelData.portals.splice(Math.min(i, pairedIndex), 1);
+                    } else {
+                        levelData.portals.splice(i, 1);
+                    }
+                    deleted = true;
+                    break;
+                }
+            }
+        }
+        
         // Check enemies
         if (!deleted) {
             for (let i = levelData.enemies.length - 1; i >= 0; i--) {
@@ -163,7 +184,7 @@ canvas.addEventListener('mousedown', (e) => {
 });
 
 canvas.addEventListener('mousemove', (e) => {
-    if (!isDrawing || currentTool !== 'platform') return;
+    if (!isDrawing || (currentTool !== 'platform' && currentTool !== 'portal')) return;
     
     const rect = canvas.getBoundingClientRect();
     const scaleX = canvas.width / rect.width;
@@ -191,6 +212,17 @@ canvas.addEventListener('mouseup', () => {
             p.startY = p.y;
         }
         levelData.platforms.push(p);
+    } else if (isDrawing && currentTool === 'portal' && currentRect.width > 5 && currentRect.height > 5) {
+        const dir = document.getElementById('portal-direction').value;
+        const colors = ['#ff8800', '#0088ff', '#00ff00', '#8800ff', '#ff00ff', '#ffff00'];
+        const pairIndex = Math.floor(levelData.portals.length / 2) % colors.length;
+        const color = colors[pairIndex];
+        
+        levelData.portals.push({
+            ...currentRect,
+            dir: dir,
+            color: color
+        });
     }
     isDrawing = false;
     currentRect = null;
@@ -259,6 +291,22 @@ function draw() {
         ctx.fillStyle = '#000';
         ctx.fillRect(en.x + 6, en.y + 10, 4, 4);
         ctx.fillRect(en.x + 20, en.y + 10, 4, 4);
+    }
+
+    // Draw portals
+    if (levelData.portals) {
+        for (let portal of levelData.portals) {
+            ctx.fillStyle = portal.color;
+            ctx.fillRect(portal.x, portal.y, portal.width, portal.height);
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = 0.5;
+            ctx.fillRect(portal.x + 2, portal.y + 2, portal.width - 4, portal.height - 4);
+            ctx.globalAlpha = 1.0;
+            
+            ctx.fillStyle = '#fff';
+            ctx.font = '10px Arial';
+            ctx.fillText(portal.dir, portal.x + 2, portal.y + 12);
+        }
     }
 
     // Draw start position (player preview)
